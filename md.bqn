@@ -134,7 +134,7 @@ Html ← {open 𝕊 contents:
 # Elements are added just after the given position in 𝕩, in the order
 # they appear in ∾add.
 Modify ← { ⟨include,add,pos⟩𝕊𝕩:
-  ((/include)∾(≠¨add)/pos) ⍋⊸⊏ (include/𝕩)∾∾add
+  ((/include)∾(≠¨add)/pos) ⍋⊸⊏ (include/𝕩)∾∾⍟(0<≠)add
 }
 
 # URL encoding for links to the REPL
@@ -160,8 +160,13 @@ repoURL ← "https://github.com/mlochbaum/BQN"
 blobURL ← repoURL∾"/blob/master/"
 
 # Environments
-_getCodeExec ← {𝕗⋄•Eval}
-_getSvgExec ← {𝕗⋄e←{•Eval} ⋄ E•FChars"svg.bqn" ⋄ JoinLines⍟(1<≡)∘E}
+_getCodeExec ← {𝕗⋄•MakeREPL@}
+_getSvgExec ← {𝕗
+  e←•MakeREPL@
+  (E"GetHighlights←Modify←!⋄{GetHighlights‿Modify↩𝕩}"){𝔽} GetHighlights‿Modify
+  E•FChars"svg.bqn"
+  JoinLines⍟(1<≡)∘E
+}
 
 
 ################################
@@ -353,13 +358,13 @@ Markdown ← {filename𝕊𝕩:
       (filter / ⌽⟜notLast / 𝕩˙)¨ 0‿¯1
     }
     tlen ← tend ⊏ tcount
-    c ← Trace´ tlen MatchTicks○((⍋tlen)⊸⊏) tend
+    c ← 0¨⍟(0=≠) Trace´ tlen MatchTicks○((⍋tlen)⊸⊏) tend
     cl ← (⊏˘c) ⊏ tcount
-    ctInds ← ⥊˘ 1 + c -⌜˘ cl×⌜1‿0
-    codeMask ← ≠` I2M ⥊ codeBounds ← 1‿2⊸⊏˘ ctInds
+    ctInds ← ⥊˘ 0¨⍟(0=≠) 1 + c -⌜˘ cl×⌜1‿0
+    codeMask ← ≠` I2M ⥊ codeBounds ← 0¨⍟(0=≠) 1‿2⊸⊏˘ 0¨⍟(0=≠) ctInds
     𝕩 ↩ ' '¨⌾((codeMask∧𝕩=lf)⊸/) 𝕩
     # If span has both a leading and a trailing space, they are removed.
-    remSpace ← I2M ⥊ ((1<-˜˝˘)∧·∧˝˘' '=⊏⟜𝕩)⊸/ -⟜0‿1˘ codeBounds
+    remSpace ← I2M ⥊ ((1<-˜˝˘)∧·∧˝˘' '=⊏⟜𝕩)⊸/ 0¨⍟(0=≠) -⟜0‿1˘ codeBounds
     codeMask ∧↩ ¬ remSpace
     ⟨code,codePos⟩ ← codeMask extensions◶(2⥊<⟨⟩)‿GetMultiHighlights 𝕩
     include ← ¬ remSpace ∨ ≠` I2M ⥊ ctInds
@@ -381,7 +386,7 @@ Markdown ← {filename𝕊𝕩:
       R ← "md"‿"html"‿RI‿(ghPath⊸∾) _replaceEnd
       # Exclude absolute links by testing for :
       # Don't do anything to fragments (trailing #sub-heading)
-      R⍟(¬𝕩∨´∘=':')⍟(0<≠)⌾((⊑𝕩⊐"#")⊸↑) 𝕩
+      (⊑𝕩⊐"#") (R⍟(¬𝕩∨´∘=':')⍟(0<≠)∘↑∾↓) 𝕩
     }⍟extensions
     # Find matched-depth [] and () pairs, then join adjacent ones
     brak ← (unused ∧ 𝕩⊸=)¨ "[]"≍"()"
@@ -410,12 +415,12 @@ Markdown ← {filename𝕊𝕩:
       (m/𝕨) ∾˘ (m/i)⊏𝕩
     }
     # The four bracket indices for each link
-    lInds ← 0‿4⊸⥊⍟(0=≠) JoinPairs○FindPairs˝ brak
+    lInds ← (0‿4⥊0)⍟(0=≠) JoinPairs○FindPairs˝ brak
     linkPos ← ⊏˘ lInds
-    lInds +⎉1↩ 1‿0‿1‿0
+    lInds ((0‿4⥊0)⍟(0=≠)+⎉1)↩ 1‿0‿1‿0
     unused ∧↩ include ∧↩ ¬ ≠` I2M ⥊ (¯1‿1+0‿3⊸⊏)˘ lInds
     linkGroup ← 1 -˜ (⊣×>)○(+`I2M)´ (≠⊸⥊⟜↕∾⊢)⟜2⊸⊔ ⥊lInds
-    links ← ProcLink¨˝˘ ∘‿2 ⥊ linkGroup ⊔ 𝕩
+    links ← (0<≠)◶⟨0⊸⥊,ProcLink¨˝˘⟩ ∘‿2 ⥊ linkGroup ⊔ 𝕩
 
     # Emphasis (still rudimentary)
     eMasks ← (unused ∧ 𝕩⊸=)¨ "*_"
@@ -454,7 +459,7 @@ Markdown ← {filename𝕊𝕩:
   commentStart ← /(lineType=5)∧lineDat=2
   EndsComment ← ∨´"-->"⍷⊑⟜𝕩
   lastCommentEnd ← ¯1
-  comInd ← ∾ comments ← {
+  comInd ← ∾⍟(0<≠) comments ← {
     lastCommentEnd ↩ end ← {𝕊⍟(¬EndsComment)1+𝕩}⍟(lastCommentEnd⊸<) 𝕩-1
     𝕩 + ↕end¬𝕩  # A list of indices
   }¨ commentStart
@@ -582,7 +587,7 @@ GetHighlights ← {
   css ← ⟨ s   ⋄ ¯1↓d ⋄ /c ⟩ # Comment or string start
   cse ← ⟨ 2+s ⋄  1↓d ⋄ ce ⟩ # Corresponding end indices
   # Now b is a table of (start,end) pairs
-  b ← css Trace○∾ cse
+  b ← 0¨⍟(0=≠) css Trace○∾ cse
   # Given a list of pairs, get a mask indicating included regions
   ToMask ← (≠`∨⊢) (≠𝕩)↑/⁼∘∾
   # Split rows and group into text‿comments
@@ -591,7 +596,7 @@ GetHighlights ← {
   col ⌈↩ +´ (2‿1-˜≠classes) × ToMask¨ tc
 
   # UTF-16 hack: first half of a special name needs to match the second
-  col↩ («col) ⊣⌾((𝕩=⊑"𝕩")⊸/) col
+# col↩ («col) ⊣⌾((𝕩=⊑"𝕩")⊸/) col
 
   # Color numeric literals and identifiers
   id ← col=5                 # ←→ 𝕩∊idChars
@@ -619,7 +624,7 @@ GetHighlights ← {
 GetMultiHighlights ← {
   start ← »⊸< 𝕨
   groups ← (1 -˜ 𝕨 × +` start) ⊔ 𝕩
-  <∘∾˘ ⍉ ((≠≍2˙) ⥊ ·> (/start) {𝕨⊸+⌾(1⊸⊑)𝕩}⟜GetHighlights¨ ⊢) groups
+  (<∾⍟(0<≠))˘ ⍉ ((≠≍2˙) ⥊ · >⍟(0<≠) (/start) {𝕨⊸+⌾(1⊸⊑)𝕩}⟜GetHighlights¨ ⊢) groups
 }
 
 
